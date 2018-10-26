@@ -5,6 +5,29 @@ This is a portion of the program I am developing.  The goal is too play a wav fi
 
 In addition I have set the BT debug logging to VERBOSE for A2D, APPL, and BTC layers.  This has been very helpful in understanding the function and purpose of the various layers!  Below is some of the key info from the logs.  To confirm I can access the WAV file I perform a "stat" call to get the file properties...this can be seen in the serial output as well.
 
+MKSPIFFS
+==========
+I created the spiff.bin file using mkspiffs from this repo:
+
+https://github.com/igrr/mkspiffs
+
+Pull this repo and copy the /data directory (in this repo) into the mkspiffs directory
+
+You need to run "make dist" to create the mkspiffs executable
+
+This command will create the spiffs.bin file with the contents in the data directory:
+
+    ./mkspiffs -c ./data -b 4096 -p 256 -s 0x100000 spiffs.bin
+
+This comman will upload the spiffs.bin file to flash:
+
+    python esptool.py --chip esp32 --port /dev/tty.usbserial-XXXXXXX --baud 115200 write_flash -z 0x190000 spiffs.bin
+
+    Replace the XXXXXXX with your serial port
+
+The csv file upperhand_partition.csv must be updated in menuconfig Partition Table.
+
+I think there might be other ways to create the spiff partition.  Also there is a Windows version too.  Let me know if you have questions about this process.
 
 Demo of A2DP audio source role
 
