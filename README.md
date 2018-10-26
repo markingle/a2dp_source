@@ -23,7 +23,7 @@ This comman will upload the spiffs.bin file to flash:
 
     python esptool.py --chip esp32 --port /dev/tty.usbserial-XXXXXXX --baud 115200 write_flash -z 0x190000 spiffs.bin
 
-    Replace the XXXXXXX with your serial port
+Replace the XXXXXXX with your serial port
 
 The csv file upperhand_partition.csv must be updated in menuconfig Partition Table.
 
