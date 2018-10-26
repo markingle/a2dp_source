@@ -1,6 +1,11 @@
 ESP-IDF A2DP-SOURCE demo
 ========================
 
+This is a portion of the program I am developing.  The goal is too play a wav file over Classic Blutooth using the A2DP profile.  I have commented on the function where I think the wav file is READ as part of the callback function but I mush admit I am struggling to understand it.
+
+In addition I have set the BT debug logging to VERBOSE for A2D, APPL, and BTC layers.  This has been very helpful in understanding the function and purpose of the various layers!  Below is some of the key info from the logs.  To confirm I can access the WAV file I perform a "stat" call to get the file properties...this can be seen in the serial output as well.
+
+
 Demo of A2DP audio source role
 
 This is the demo for user to use ESP_APIs to use Advanced Audio Distribution Profile in transmitting audio stream
