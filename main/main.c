@@ -29,6 +29,14 @@
 #include "esp_spiffs.h"
 #include <fcntl.h>
 
+//The following headers are for GPIO intregration and tasks background processes for interrupts
+#include "c_timeutils.h"
+#include "driver/gpio.h"
+#include "driver/ledc.h"
+#include "gpio_task.h"
+#include "sdkconfig.h"
+#include "freertos/event_groups.h"
+
 #define BT_AV_TAG               "BT_AV"
 #define SPIFFS_TAG              "SPIFFS"
 
@@ -55,6 +63,17 @@ enum {
     APP_AV_MEDIA_STATE_STARTED,
     APP_AV_MEDIA_STATE_STOPPING,
 };
+
+EventGroupHandle_t alarm_eventgroup;
+
+const int GPIO_SENSE_BIT = BIT0;
+
+//GPIO pin assignments
+#define BLINK_GPIO GPIO_NUM_5
+#define TDA1606_GPIO GPIO_NUM_27
+#define GPIO_TDA_INPUT  22
+#define GPIO_GLOVE_OUTPUT_SWITCH 4
+#define GPIO_OUTPUT    13
 
 #define BT_APP_HEART_BEAT_EVT                (0xff00)
 
@@ -102,8 +121,18 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
     return str;
 }
 
+
+void IRAM_ATTR gpio_isr_handler(void* arg) {
+    uint32_t gpio_num = (uint32_t) arg;
+    BaseType_t xHigherPriorityTaskWoken;
+    if (gpio_num==GPIO_OUTPUT) {
+        xEventGroupSetBitsFromISR(alarm_eventgroup, GPIO_SENSE_BIT, &xHigherPriorityTaskWoken);
+    }
+}
+
 void app_main()
 {
+    //******************************************* SETUP BLUETOOTH STACK GAP and Classic Bluetooth ***************************************
 
     esp_log_level_set("*", ESP_LOG_DEBUG);
     // Initialize NVS.
@@ -142,7 +171,7 @@ void app_main()
     /* Bluetooth device name, connection mode and profile set up */
     bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
 
-    //SETUP SPIFFS FOR PCM FILE
+    //******************************************* SETUP SPIFFS FOR PCM FILE ***************************************
 
     ESP_LOGI(SPIFFS_TAG, "Initializing SPIFFS");
 
@@ -215,6 +244,56 @@ void app_main()
             
     ESP_LOGI(SPIFFS_TAG, "File file has been read");
 
+    //******************************************* SETUP GPIO CONFIGURATION FOR METAL DETECTOR AND SWITCH ***************************************
+
+
+    //xTaskCreate(example_i2s_adc_dac, "example_i2s_adc_dac", 1024 * 2, NULL, 5, NULL);
+    //xTaskCreate(adc_read_task, "ADC read task", 2048, NULL, 5, NULL);
+    gpio_pad_select_gpio(TDA1606_GPIO);
+    struct timeval lastPress;
+    //ESP_LOGI(LOG_TAG, ">> test1_task");
+    gettimeofday(&lastPress, NULL);
+
+    //gpio_num_t gpio;
+
+    gpio_config_t io_conf;
+    /*
+    q1 = xQueueCreate(10, sizeof(gpio_num_t));
+    gpio_config_t gpioConfig;
+    gpioConfig.pin_bit_mask = GPIO_SEL_27;
+    gpioConfig.mode = GPIO_MODE_INPUT;
+    gpioConfig.pull_up_en = GPIO_PULLUP_DISABLE;
+    gpioConfig.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    gpioConfig.intr_type = GPIO_INTR_POSEDGE;
+    gpio_config(&gpioConfig);
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(TDA1606_GPIO, handler, NULL);*/
+
+    //interrupt of falling edge
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    io_conf.pin_bit_mask = (1<<GPIO_GLOVE_OUTPUT_SWITCH);
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 1;
+    gpio_config(&io_conf);
+
+    //interrupt of rising edge
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    
+    io_conf.pin_bit_mask = (0<<GPIO_TDA_INPUT);
+    //set as input mode    
+    io_conf.mode = GPIO_MODE_INPUT;
+    //enable pull-up mode
+    io_conf.pull_up_en = 1;
+    io_conf.pull_down_en = 0;
+    gpio_config(&io_conf);
+
+    //install gpio isr service
+    gpio_install_isr_service(0); // no flags
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_TDA_INPUT, gpio_isr_handler, (void*) GPIO_TDA_INPUT);
+    //gpio_isr_handler_add(GPIO_NUM_34, gpio_isr_handler, (void*) GPIO_NUM_34);
+    gpio_isr_handler_add(GPIO_GLOVE_OUTPUT_SWITCH, gpio_isr_handler, (void*) GPIO_GLOVE_OUTPUT_SWITCH);
 
 
 }
@@ -294,6 +373,8 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
         }
 
         ESP_LOGI(BT_AV_TAG, "Found a target device, address %s, name %s", bda_str, peer_bdname);
+        gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+        gpio_set_level(BLINK_GPIO, 1);
         m_a2d_state = APP_AV_STATE_DISCOVERED;
         memcpy(peer_bda, param->disc_res.bda, ESP_BD_ADDR_LEN);
         ESP_LOGI(BT_AV_TAG, "Cancel device discovery ...");
@@ -573,6 +654,8 @@ static void bt_app_av_state_connected(uint16_t event, void *param)
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
             ESP_LOGI(BT_AV_TAG, "a2dp disconnected");
             m_a2d_state = APP_AV_STATE_UNCONNECTED;
+            gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+            gpio_set_level(BLINK_GPIO, 0);
             esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);
         }
         break;
