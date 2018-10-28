@@ -104,6 +104,8 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
 
 void app_main()
 {
+
+    esp_log_level_set("*", ESP_LOG_DEBUG);
     // Initialize NVS.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
@@ -174,7 +176,7 @@ void app_main()
         ESP_LOGI(SPIFFS_TAG, "Partition size: total: %d, used: %d", total, used);
     }
 
-    wavfile = open("/spiffs/WarningMetalDetected_16bit.wav", O_RDONLY);
+    wavfile = open("/spiffs/SinWave_16bit.wav", O_RDONLY);
     if (wavfile < 0) {
         ESP_LOGI(SPIFFS_TAG, "Failed to open file for writing");
         return(1);
@@ -183,10 +185,10 @@ void app_main()
     ESP_LOGI(SPIFFS_TAG, "File opened");
 
     struct stat fileStat;
-    if(stat("/spiffs/WarningMetalDetected_16bit.wav",&fileStat) < 0)    
+    if(stat("/spiffs/SinWave_16bit.wav",&fileStat) < 0)    
         return 1;
  
-    printf("Information for %s\n", "/spiffs/WarningMetalDetected_16bit.wav");
+    printf("Information for %s\n", "/spiffs/SinWave_16bit.wav");
     printf("---------------------------\n");
     printf("File Size: \t\t%ld bytes\n",fileStat.st_size);
     printf("Number of Links: \t%d\n",fileStat.st_nlink);
