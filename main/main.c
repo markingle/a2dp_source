@@ -74,6 +74,10 @@ const int GPIO_SENSE_BIT = BIT0;
 #define GPIO_TDA_INPUT  22
 #define GPIO_GLOVE_OUTPUT_SWITCH 4
 #define GPIO_OUTPUT    13
+#define GPIO_INPUT     0
+
+//Sound function for speaker
+#define GPIO_OUTPUT_SPEED LEDC_HIGH_SPEED_MODE
 
 #define BT_APP_HEART_BEAT_EVT                (0xff00)
 
@@ -130,8 +134,93 @@ void IRAM_ATTR gpio_isr_handler(void* arg) {
     }
 }
 
+void sound(int gpio_num,uint32_t freq,uint32_t duration) {
+
+    ledc_timer_config_t timer_conf;
+    timer_conf.speed_mode = GPIO_OUTPUT_SPEED;
+    timer_conf.bit_num    = LEDC_TIMER_10_BIT;
+    timer_conf.timer_num  = LEDC_TIMER_0;
+    timer_conf.freq_hz    = freq;
+    ledc_timer_config(&timer_conf);
+
+    ledc_channel_config_t ledc_conf;
+    ledc_conf.gpio_num   = gpio_num;
+    ledc_conf.speed_mode = GPIO_OUTPUT_SPEED;
+    ledc_conf.channel    = LEDC_CHANNEL_0;
+    ledc_conf.intr_type  = LEDC_INTR_DISABLE;
+    ledc_conf.timer_sel  = LEDC_TIMER_0;
+    ledc_conf.duty       = 0x0; // 50%=0x3FFF, 100%=0x7FFF for 15 Bit
+                                // 50%=0x01FF, 100%=0x03FF for 10 Bit
+    ledc_channel_config(&ledc_conf);
+
+    // start
+    ledc_set_duty(GPIO_OUTPUT_SPEED, LEDC_CHANNEL_0, 0x7F); // 12% duty - play here for your speaker or buzzer
+    ledc_update_duty(GPIO_OUTPUT_SPEED, LEDC_CHANNEL_0);
+    vTaskDelay(duration/portTICK_PERIOD_MS);
+    // stop
+    ledc_set_duty(GPIO_OUTPUT_SPEED, LEDC_CHANNEL_0, 0);
+    ledc_update_duty(GPIO_OUTPUT_SPEED, LEDC_CHANNEL_0);
+
+}
+
+// based on https://wiki.mikrotik.com/wiki/Super_Mario_Theme
+void play_theme() {
+    sound(GPIO_OUTPUT,660,100);
+    vTaskDelay(150/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,660,100);
+    vTaskDelay(300/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,660,100);
+    vTaskDelay(300/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,510,100);
+    vTaskDelay(100/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,660,100);
+    vTaskDelay(300/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,770,100);
+    vTaskDelay(550/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,380,100);
+    vTaskDelay(575/portTICK_PERIOD_MS);
+
+    sound(GPIO_OUTPUT,510,100);
+    vTaskDelay(450/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,380,100);
+    vTaskDelay(400/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,320,100);
+    vTaskDelay(500/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,440,100);
+    vTaskDelay(300/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,480,80);
+    vTaskDelay(330/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,450,100);
+    vTaskDelay(150/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,430,100);
+    vTaskDelay(300/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,380,100);
+    vTaskDelay(200/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,660,80);
+    vTaskDelay(200/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,760,50);
+    vTaskDelay(150/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,860,100);
+    vTaskDelay(300/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,700,80);
+    vTaskDelay(150/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,760,50);
+    vTaskDelay(350/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,660,80);
+    vTaskDelay(300/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,520,80);
+    vTaskDelay(150/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,580,80);
+    vTaskDelay(150/portTICK_PERIOD_MS);
+    sound(GPIO_OUTPUT,480,80);
+    vTaskDelay(500/portTICK_PERIOD_MS);
+}
+
 void app_main()
 {
+    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(BLINK_GPIO, 0);
+
     //******************************************* SETUP BLUETOOTH STACK GAP and Classic Bluetooth ***************************************
 
     esp_log_level_set("*", ESP_LOG_DEBUG);
@@ -249,26 +338,12 @@ void app_main()
 
     //xTaskCreate(example_i2s_adc_dac, "example_i2s_adc_dac", 1024 * 2, NULL, 5, NULL);
     //xTaskCreate(adc_read_task, "ADC read task", 2048, NULL, 5, NULL);
-    gpio_pad_select_gpio(TDA1606_GPIO);
+    //gpio_pad_select_gpio(TDA1606_GPIO);
     struct timeval lastPress;
     //ESP_LOGI(LOG_TAG, ">> test1_task");
     gettimeofday(&lastPress, NULL);
 
-    //gpio_num_t gpio;
-
     gpio_config_t io_conf;
-    /*
-    q1 = xQueueCreate(10, sizeof(gpio_num_t));
-    gpio_config_t gpioConfig;
-    gpioConfig.pin_bit_mask = GPIO_SEL_27;
-    gpioConfig.mode = GPIO_MODE_INPUT;
-    gpioConfig.pull_up_en = GPIO_PULLUP_DISABLE;
-    gpioConfig.pull_down_en = GPIO_PULLDOWN_ENABLE;
-    gpioConfig.intr_type = GPIO_INTR_POSEDGE;
-    gpio_config(&gpioConfig);
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(TDA1606_GPIO, handler, NULL);*/
-
     //interrupt of falling edge
     io_conf.intr_type = GPIO_INTR_ANYEDGE;
     io_conf.pin_bit_mask = (1<<GPIO_GLOVE_OUTPUT_SWITCH);
@@ -280,7 +355,7 @@ void app_main()
     //interrupt of rising edge
     io_conf.intr_type = GPIO_INTR_ANYEDGE;
     
-    io_conf.pin_bit_mask = (0<<GPIO_TDA_INPUT);
+    io_conf.pin_bit_mask = (1<<GPIO_TDA_INPUT);
     //set as input mode    
     io_conf.mode = GPIO_MODE_INPUT;
     //enable pull-up mode
@@ -295,7 +370,9 @@ void app_main()
     //gpio_isr_handler_add(GPIO_NUM_34, gpio_isr_handler, (void*) GPIO_NUM_34);
     gpio_isr_handler_add(GPIO_GLOVE_OUTPUT_SWITCH, gpio_isr_handler, (void*) GPIO_GLOVE_OUTPUT_SWITCH);
 
-
+    //init_gpio();
+    //play_theme();
+    sound(GPIO_OUTPUT,660,1000);
 }
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
@@ -373,8 +450,6 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
         }
 
         ESP_LOGI(BT_AV_TAG, "Found a target device, address %s, name %s", bda_str, peer_bdname);
-        gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
-        gpio_set_level(BLINK_GPIO, 1);
         m_a2d_state = APP_AV_STATE_DISCOVERED;
         memcpy(peer_bda, param->disc_res.bda, ESP_BD_ADDR_LEN);
         ESP_LOGI(BT_AV_TAG, "Cancel device discovery ...");
@@ -558,6 +633,8 @@ static void bt_app_av_state_connecting(uint16_t event, void *param)
             ESP_LOGI(BT_AV_TAG, "a2dp connected");
             m_a2d_state =  APP_AV_STATE_CONNECTED;
             m_media_state = APP_AV_MEDIA_STATE_IDLE;
+            gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+            gpio_set_level(BLINK_GPIO, 1);
             esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_NONE);
         } else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
             m_a2d_state =  APP_AV_STATE_UNCONNECTED;
