@@ -164,56 +164,8 @@ void sound(int gpio_num,uint32_t freq,uint32_t duration) {
 }
 
 // based on https://wiki.mikrotik.com/wiki/Super_Mario_Theme
-void play_theme() {
+void beep() {
     sound(GPIO_OUTPUT,660,100);
-    vTaskDelay(150/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,660,100);
-    vTaskDelay(300/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,660,100);
-    vTaskDelay(300/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,510,100);
-    vTaskDelay(100/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,660,100);
-    vTaskDelay(300/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,770,100);
-    vTaskDelay(550/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,380,100);
-    vTaskDelay(575/portTICK_PERIOD_MS);
-
-    sound(GPIO_OUTPUT,510,100);
-    vTaskDelay(450/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,380,100);
-    vTaskDelay(400/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,320,100);
-    vTaskDelay(500/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,440,100);
-    vTaskDelay(300/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,480,80);
-    vTaskDelay(330/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,450,100);
-    vTaskDelay(150/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,430,100);
-    vTaskDelay(300/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,380,100);
-    vTaskDelay(200/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,660,80);
-    vTaskDelay(200/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,760,50);
-    vTaskDelay(150/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,860,100);
-    vTaskDelay(300/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,700,80);
-    vTaskDelay(150/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,760,50);
-    vTaskDelay(350/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,660,80);
-    vTaskDelay(300/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,520,80);
-    vTaskDelay(150/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,580,80);
-    vTaskDelay(150/portTICK_PERIOD_MS);
-    sound(GPIO_OUTPUT,480,80);
-    vTaskDelay(500/portTICK_PERIOD_MS);
 }
 
 void app_main()
@@ -303,10 +255,10 @@ void app_main()
     ESP_LOGI(SPIFFS_TAG, "File opened");
 
     struct stat fileStat;
-    if(stat("/spiffs/SinWave_16bit.wav",&fileStat) < 0)    
+    if(stat("/spiffs/WarningMetalDetected_16bit.wav",&fileStat) < 0)    
         return 1;
  
-    printf("Information for %s\n", "/spiffs/SinWave_16bit.wav");
+    printf("Information for %s\n", "/spiffs/WarningMetalDetected_16bit.wav");
     printf("---------------------------\n");
     printf("File Size: \t\t%ld bytes\n",fileStat.st_size);
     printf("Number of Links: \t%d\n",fileStat.st_nlink);
@@ -445,7 +397,7 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
     /* search for device named "ESP_SPEAKER" in its extenXded inqury response */
     if (eir) {
         get_name_from_eir(eir, peer_bdname, NULL);
-        if (strcmp((char *)peer_bdname, "JVC HA-FX9BT") != 0) {     //jvc ha-fx9bt
+        if (strcmp((char *)peer_bdname, "SoundCore mini") != 0) {     //jvc ha-fx9bt   SoundCore mini
             return;
         }
 
