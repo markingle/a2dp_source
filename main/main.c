@@ -40,6 +40,8 @@
 #define BT_AV_TAG               "BT_AV"
 #define SPIFFS_TAG              "SPIFFS"
 
+#define TABLE_SIZE_441HZ            100
+
 /* event for handler "bt_av_hdl_stack_up */
 enum {
     BT_APP_EVT_STACK_UP = 0,
@@ -109,9 +111,24 @@ static int m_intv_cnt = 0;
 static int m_connecting_intv = 0;
 static uint32_t m_pkt_cnt = 0;
 
+static int sine_phase;
+
 TimerHandle_t tmr;
 
 int wavfile = 0;
+
+static const int16_t sine_int16[] = {
+     0,    2057,    4107,    6140,    8149,   10126,   12062,   13952,   15786,   17557,
+ 19260,   20886,   22431,   23886,   25247,   26509,   27666,   28714,   29648,   30466,
+ 31163,   31738,   32187,   32509,   32702,   32767,   32702,   32509,   32187,   31738,
+ 31163,   30466,   29648,   28714,   27666,   26509,   25247,   23886,   22431,   20886,
+ 19260,   17557,   15786,   13952,   12062,   10126,    8149,    6140,    4107,    2057,
+     0,   -2057,   -4107,   -6140,   -8149,  -10126,  -12062,  -13952,  -15786,  -17557,
+-19260,  -20886,  -22431,  -23886,  -25247,  -26509,  -27666,  -28714,  -29648,  -30466,
+-31163,  -31738,  -32187,  -32509,  -32702,  -32767,  -32702,  -32509,  -32187,  -31738,
+-31163,  -30466,  -29648,  -28714,  -27666,  -26509,  -25247,  -23886,  -22431,  -20886,
+-19260,  -17557,  -15786,  -13952,  -12062,  -10126,   -8149,   -6140,   -4107,   -2057,
+};
 
 static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
 {
@@ -213,7 +230,7 @@ void app_main()
     bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
 
     //******************************************* SETUP SPIFFS FOR PCM FILE ***************************************
-
+/*
     ESP_LOGI(SPIFFS_TAG, "Initializing SPIFFS");
 
     esp_vfs_spiffs_conf_t conf = {
@@ -284,7 +301,7 @@ void app_main()
     //close(wavfile);
             
     ESP_LOGI(SPIFFS_TAG, "File file has been read");
-
+*/
     //******************************************* SETUP GPIO CONFIGURATION FOR METAL DETECTOR AND SWITCH ***************************************
 
 
@@ -397,7 +414,7 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
     /* search for device named "ESP_SPEAKER" in its extenXded inqury response */
     if (eir) {
         get_name_from_eir(eir, peer_bdname, NULL);
-        if (strcmp((char *)peer_bdname, "SoundCore mini") != 0) {     //jvc ha-fx9bt   SoundCore mini
+        if (strcmp((char *)peer_bdname, "JVC HA-FX9BT") != 0) {     //jvc ha-fx9bt   SoundCore mini
             return;
         }
 
@@ -511,12 +528,22 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
     //    data[(i << 1)] = val & 0xff;
     //    data[(i << 1) + 1] = (val >> 8) & 0xff;
 
-    int l = read(wavfile, data, len);
+/*    int l = read(wavfile, data, len);
     if (wavfile < 0) {
         ESP_LOGI(SPIFFS_TAG, "Failed to open file for writing");
     }
     if (l < len) {
         lseek(wavfile, 0, SEEK_SET);
+*/
+    int count;
+
+    for (count = 0; count < len ; count++){
+        data[count * 2]     = sine_int16[sine_phase];
+        data[count * 2 + 1] = sine_int16[sine_phase];
+        sine_phase++;
+        if (sine_phase >= TABLE_SIZE_441HZ){
+            sine_phase -= TABLE_SIZE_441HZ;
+        }
     }
 
     return len;
