@@ -342,6 +342,7 @@ void app_main()
     //init_gpio();
     //play_theme();
     sound(GPIO_OUTPUT,660,1000);
+    sound(GPIO_OUTPUT,950,1000);
 }
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
@@ -414,7 +415,7 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
     /* search for device named "ESP_SPEAKER" in its extenXded inqury response */
     if (eir) {
         get_name_from_eir(eir, peer_bdname, NULL);
-        if (strcmp((char *)peer_bdname, "JVC HA-FX9BT") != 0) {     //jvc ha-fx9bt   SoundCore mini
+        if (strcmp((char *)peer_bdname, "SoundCore mini") != 0) {     //jvc ha-fx9bt   SoundCore mini
             return;
         }
 
@@ -671,6 +672,8 @@ static void bt_app_av_media_proc(uint16_t event, void *param)
         }
         break;
     }
+
+    //THIS case option is where the a2dp connection is stopped
     case APP_AV_MEDIA_STATE_STARTED: {
         if (event == BT_APP_HEART_BEAT_EVT) {
             if (++m_intv_cnt >= 10) {
