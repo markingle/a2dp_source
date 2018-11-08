@@ -185,165 +185,7 @@ void beep() {
     sound(GPIO_OUTPUT,660,100);
 }
 
-void app_main()
-{
-    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_level(BLINK_GPIO, 0);
 
-    //******************************************* SETUP BLUETOOTH STACK GAP and Classic Bluetooth ***************************************
-
-    esp_log_level_set("*", ESP_LOG_DEBUG);
-    // Initialize NVS.
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK( ret );
-
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-
-    if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
-        ESP_LOGE(BT_AV_TAG, "%s initialize controller failed\n", __func__);
-        return;
-    }
-
-    if (esp_bt_controller_enable(ESP_BT_MODE_BTDM) != ESP_OK) {
-        ESP_LOGE(BT_AV_TAG, "%s enable controller failed\n", __func__);
-        return;
-    }
-
-    if (esp_bluedroid_init() != ESP_OK) {
-        ESP_LOGE(BT_AV_TAG, "%s initialize bluedroid failed\n", __func__);
-        return;
-    }
-
-    if (esp_bluedroid_enable() != ESP_OK) {
-        ESP_LOGE(BT_AV_TAG, "%s enable bluedroid failed\n", __func__);
-        return;
-    }
-
-    /* create application task */
-    bt_app_task_start_up();
-
-    /* Bluetooth device name, connection mode and profile set up */
-    bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
-
-    //******************************************* SETUP SPIFFS FOR PCM FILE ***************************************
-/*
-    ESP_LOGI(SPIFFS_TAG, "Initializing SPIFFS");
-
-    esp_vfs_spiffs_conf_t conf = {
-      .base_path = "/spiffs",
-      .partition_label = NULL,
-      .max_files = 5,
-      .format_if_mount_failed = true
-    };
-    
-    // Use settings defined above to initialize and mount SPIFFS filesystem.
-    // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
-    esp_err_t spfs_ret = esp_vfs_spiffs_register(&conf);
-
-    if (spfs_ret != ESP_OK) {
-        if (spfs_ret == ESP_FAIL) {
-            ESP_LOGE(SPIFFS_TAG, "Failed to mount or format filesystem");
-        } else if (spfs_ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGE(SPIFFS_TAG, "Failed to find SPIFFS partition");
-        } else {
-            ESP_LOGE(SPIFFS_TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(spfs_ret));
-        }
-        return(0);
-    }
-    
-    size_t total = 0, used = 0;
-    spfs_ret = esp_spiffs_info(NULL, &total, &used);
-    if (spfs_ret != ESP_OK) {
-        ESP_LOGE(SPIFFS_TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(spfs_ret));
-    } else {
-        ESP_LOGI(SPIFFS_TAG, "Partition size: total: %d, used: %d", total, used);
-    }
-
-    wavfile = open("/spiffs/SinWave_16bit.wav", O_RDONLY);
-    if (wavfile < 0) {
-        ESP_LOGI(SPIFFS_TAG, "Failed to open file for writing");
-        return(1);
-    }
-
-    ESP_LOGI(SPIFFS_TAG, "File opened");
-
-    struct stat fileStat;
-    if(stat("/spiffs/WarningMetalDetected_16bit.wav",&fileStat) < 0)    
-        return 1;
- 
-    printf("Information for %s\n", "/spiffs/WarningMetalDetected_16bit.wav");
-    printf("---------------------------\n");
-    printf("File Size: \t\t%ld bytes\n",fileStat.st_size);
-    printf("Number of Links: \t%d\n",fileStat.st_nlink);
-    printf("File inode: \t\t%d\n",fileStat.st_ino);
- 
-    printf("File Permissions: \t");
-    printf( (S_ISDIR(fileStat.st_mode)) ? "d" : "-");
-    printf( (fileStat.st_mode & S_IRUSR) ? "r" : "-");
-    printf( (fileStat.st_mode & S_IWUSR) ? "w" : "-");
-    printf( (fileStat.st_mode & S_IXUSR) ? "x" : "-");
-    printf( (fileStat.st_mode & S_IRGRP) ? "r" : "-");
-    printf( (fileStat.st_mode & S_IWGRP) ? "w" : "-");
-    printf( (fileStat.st_mode & S_IXGRP) ? "x" : "-");
-    printf( (fileStat.st_mode & S_IROTH) ? "r" : "-");
-    printf( (fileStat.st_mode & S_IWOTH) ? "w" : "-");
-    printf( (fileStat.st_mode & S_IXOTH) ? "x" : "-");
-    printf("\n\n");
- 
-    printf("The file %s a symbolic link\n", (S_ISLNK(fileStat.st_mode)) ? "is" : "is not");
- 
-    //return 0;
-
-    //close(wavfile);
-            
-    ESP_LOGI(SPIFFS_TAG, "File file has been read");
-*/
-    //******************************************* SETUP GPIO CONFIGURATION FOR METAL DETECTOR AND SWITCH ***************************************
-
-
-    //xTaskCreate(example_i2s_adc_dac, "example_i2s_adc_dac", 1024 * 2, NULL, 5, NULL);
-    //xTaskCreate(adc_read_task, "ADC read task", 2048, NULL, 5, NULL);
-    //gpio_pad_select_gpio(TDA1606_GPIO);
-    struct timeval lastPress;
-    //ESP_LOGI(LOG_TAG, ">> test1_task");
-    gettimeofday(&lastPress, NULL);
-
-    gpio_config_t io_conf;
-    //interrupt of falling edge
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
-    io_conf.pin_bit_mask = (1<<GPIO_GLOVE_OUTPUT_SWITCH);
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = 0;
-    io_conf.pull_down_en = 1;
-    gpio_config(&io_conf);
-
-    //interrupt of rising edge
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
-    
-    io_conf.pin_bit_mask = (1<<GPIO_TDA_INPUT);
-    //set as input mode    
-    io_conf.mode = GPIO_MODE_INPUT;
-    //enable pull-up mode
-    io_conf.pull_up_en = 1;
-    io_conf.pull_down_en = 0;
-    gpio_config(&io_conf);
-
-    //install gpio isr service
-    gpio_install_isr_service(0); // no flags
-    //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(GPIO_TDA_INPUT, gpio_isr_handler, (void*) GPIO_TDA_INPUT);
-    //gpio_isr_handler_add(GPIO_NUM_34, gpio_isr_handler, (void*) GPIO_NUM_34);
-    gpio_isr_handler_add(GPIO_GLOVE_OUTPUT_SWITCH, gpio_isr_handler, (void*) GPIO_GLOVE_OUTPUT_SWITCH);
-
-    //init_gpio();
-    //play_theme();
-    sound(GPIO_OUTPUT,660,1000);
-    sound(GPIO_OUTPUT,950,1000);
-}
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
 {
@@ -415,7 +257,7 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
     /* search for device named "ESP_SPEAKER" in its extenXded inqury response */
     if (eir) {
         get_name_from_eir(eir, peer_bdname, NULL);
-        if (strcmp((char *)peer_bdname, "SoundCore mini") != 0) {     //jvc ha-fx9bt   SoundCore mini
+        if (strcmp((char *)peer_bdname, "JVC HA-FX9BT") != 0) {     //JVC HA-FX9BT   SoundCore mini
             return;
         }
 
@@ -441,7 +283,10 @@ void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
                 m_a2d_state = APP_AV_STATE_CONNECTING;
                 ESP_LOGI(BT_AV_TAG, "Device discovery stopped.");
                 ESP_LOGI(BT_AV_TAG, "a2dp connecting to peer: %s", peer_bdname);
-                esp_a2d_source_connect(peer_bda);
+                if (esp_a2d_source_connect(peer_bda) == ESP_OK) {
+                    ESP_LOGE(BT_AV_TAG, "%s A2DP SOURCE CONNECTION SUCCESS\n", __func__);
+                }
+                
             } else {
                 // not discovered, continue to discover
                 ESP_LOGI(BT_AV_TAG, "Device discovery failed, continue to discover...");
@@ -762,4 +607,185 @@ static void bt_app_av_state_disconnecting(uint16_t event, void *param)
         ESP_LOGE(BT_AV_TAG, "%s unhandled evt %d", __func__, event);
         break;
     }
+}
+
+void app_main()
+{
+    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(BLINK_GPIO, 0);
+
+    //******************************************* SETUP BLUETOOTH STACK GAP and Classic Bluetooth ***************************************
+
+    esp_log_level_set("*", ESP_LOG_DEBUG);
+    // Initialize NVS.
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK( ret );
+
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+
+    if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s initialize controller failed\n", __func__);
+        return;
+    }
+
+    if (esp_bt_controller_enable(ESP_BT_MODE_BTDM) != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s enable controller failed\n", __func__);
+        return;
+    }
+
+    if (esp_bluedroid_init() != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s initialize bluedroid failed\n", __func__);
+        return;
+    }
+
+    if (esp_bluedroid_enable() != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s enable bluedroid failed\n", __func__);
+        return;
+    }
+
+    /* create application task */
+    bt_app_task_start_up();
+
+    /* Bluetooth device name, connection mode and profile set up */
+    //bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
+
+    /* set up device name */
+        char *dev_name = "UPPER_HAND";
+        esp_bt_dev_set_device_name(dev_name);
+
+        /* register GAP callback function */
+        esp_bt_gap_register_callback(bt_app_gap_cb);
+
+        /* initialize A2DP source */
+        esp_a2d_register_callback(&bt_app_a2d_cb);
+        esp_a2d_source_register_data_callback(bt_app_a2d_data_cb);
+        esp_a2d_source_init();
+
+        /* set discoverable and connectable mode */
+        esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);
+
+        /* start device discovery */
+        ESP_LOGI(BT_AV_TAG, "Starting device discovery...");
+        m_a2d_state = APP_AV_STATE_DISCOVERING;
+        esp_bt_gap_start_discovery(ESP_BT_INQ_MODE_GENERAL_INQUIRY, 10, 0);
+
+
+    //******************************************* SETUP SPIFFS FOR PCM FILE ***************************************
+/*
+    ESP_LOGI(SPIFFS_TAG, "Initializing SPIFFS");
+
+    esp_vfs_spiffs_conf_t conf = {
+      .base_path = "/spiffs",
+      .partition_label = NULL,
+      .max_files = 5,
+      .format_if_mount_failed = true
+    };
+    
+    // Use settings defined above to initialize and mount SPIFFS filesystem.
+    // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
+    esp_err_t spfs_ret = esp_vfs_spiffs_register(&conf);
+
+    if (spfs_ret != ESP_OK) {
+        if (spfs_ret == ESP_FAIL) {
+            ESP_LOGE(SPIFFS_TAG, "Failed to mount or format filesystem");
+        } else if (spfs_ret == ESP_ERR_NOT_FOUND) {
+            ESP_LOGE(SPIFFS_TAG, "Failed to find SPIFFS partition");
+        } else {
+            ESP_LOGE(SPIFFS_TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(spfs_ret));
+        }
+        return(0);
+    }
+    
+    size_t total = 0, used = 0;
+    spfs_ret = esp_spiffs_info(NULL, &total, &used);
+    if (spfs_ret != ESP_OK) {
+        ESP_LOGE(SPIFFS_TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(spfs_ret));
+    } else {
+        ESP_LOGI(SPIFFS_TAG, "Partition size: total: %d, used: %d", total, used);
+    }
+
+    wavfile = open("/spiffs/SinWave_16bit.wav", O_RDONLY);
+    if (wavfile < 0) {
+        ESP_LOGI(SPIFFS_TAG, "Failed to open file for writing");
+        return(1);
+    }
+
+    ESP_LOGI(SPIFFS_TAG, "File opened");
+
+    struct stat fileStat;
+    if(stat("/spiffs/WarningMetalDetected_16bit.wav",&fileStat) < 0)    
+        return 1;
+ 
+    printf("Information for %s\n", "/spiffs/WarningMetalDetected_16bit.wav");
+    printf("---------------------------\n");
+    printf("File Size: \t\t%ld bytes\n",fileStat.st_size);
+    printf("Number of Links: \t%d\n",fileStat.st_nlink);
+    printf("File inode: \t\t%d\n",fileStat.st_ino);
+ 
+    printf("File Permissions: \t");
+    printf( (S_ISDIR(fileStat.st_mode)) ? "d" : "-");
+    printf( (fileStat.st_mode & S_IRUSR) ? "r" : "-");
+    printf( (fileStat.st_mode & S_IWUSR) ? "w" : "-");
+    printf( (fileStat.st_mode & S_IXUSR) ? "x" : "-");
+    printf( (fileStat.st_mode & S_IRGRP) ? "r" : "-");
+    printf( (fileStat.st_mode & S_IWGRP) ? "w" : "-");
+    printf( (fileStat.st_mode & S_IXGRP) ? "x" : "-");
+    printf( (fileStat.st_mode & S_IROTH) ? "r" : "-");
+    printf( (fileStat.st_mode & S_IWOTH) ? "w" : "-");
+    printf( (fileStat.st_mode & S_IXOTH) ? "x" : "-");
+    printf("\n\n");
+ 
+    printf("The file %s a symbolic link\n", (S_ISLNK(fileStat.st_mode)) ? "is" : "is not");
+ 
+    //return 0;
+
+    //close(wavfile);
+            
+    ESP_LOGI(SPIFFS_TAG, "File file has been read");
+*/
+    //******************************************* SETUP GPIO CONFIGURATION FOR METAL DETECTOR AND SWITCH ***************************************
+
+
+    //xTaskCreate(example_i2s_adc_dac, "example_i2s_adc_dac", 1024 * 2, NULL, 5, NULL);
+    //xTaskCreate(adc_read_task, "ADC read task", 2048, NULL, 5, NULL);
+    //gpio_pad_select_gpio(TDA1606_GPIO);
+    struct timeval lastPress;
+    //ESP_LOGI(LOG_TAG, ">> test1_task");
+    gettimeofday(&lastPress, NULL);
+
+    gpio_config_t io_conf;
+    //interrupt of falling edge
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    io_conf.pin_bit_mask = (1<<GPIO_GLOVE_OUTPUT_SWITCH);
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = 0;
+    io_conf.pull_down_en = 1;
+    gpio_config(&io_conf);
+
+    //interrupt of rising edge
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    
+    io_conf.pin_bit_mask = (1<<GPIO_TDA_INPUT);
+    //set as input mode    
+    io_conf.mode = GPIO_MODE_INPUT;
+    //enable pull-up mode
+    io_conf.pull_up_en = 1;
+    io_conf.pull_down_en = 0;
+    gpio_config(&io_conf);
+
+    //install gpio isr service
+    gpio_install_isr_service(0); // no flags
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_TDA_INPUT, gpio_isr_handler, (void*) GPIO_TDA_INPUT);
+    //gpio_isr_handler_add(GPIO_NUM_34, gpio_isr_handler, (void*) GPIO_NUM_34);
+    gpio_isr_handler_add(GPIO_GLOVE_OUTPUT_SWITCH, gpio_isr_handler, (void*) GPIO_GLOVE_OUTPUT_SWITCH);
+
+    //init_gpio();
+    //play_theme();
+    sound(GPIO_OUTPUT,660,1000);
+    sound(GPIO_OUTPUT,950,1000);
 }
