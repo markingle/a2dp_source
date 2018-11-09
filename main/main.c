@@ -111,6 +111,8 @@ static int m_intv_cnt = 0;
 static int m_connecting_intv = 0;
 static uint32_t m_pkt_cnt = 0;
 
+static uint16_t event;
+
 static int sine_phase;
 
 TimerHandle_t tmr;
@@ -284,7 +286,7 @@ void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
                 ESP_LOGI(BT_AV_TAG, "Device discovery stopped.");
                 ESP_LOGI(BT_AV_TAG, "a2dp connecting to peer: %s", peer_bdname);
                 if (esp_a2d_source_connect(peer_bda) == ESP_OK) {
-                    ESP_LOGE(BT_AV_TAG, "%s A2DP SOURCE CONNECTION SUCCESS\n", __func__);
+                    ESP_LOGI(BT_AV_TAG, "%s A2DP SOURCE CONNECTION SUCCESS\n", __func__);
                 }
                 
             } else {
@@ -484,6 +486,7 @@ static void bt_app_av_state_connecting(uint16_t event, void *param)
 
 static void bt_app_av_media_proc(uint16_t event, void *param)
 {
+    ESP_LOGI(BT_AV_TAG, "%s called with event %d", __func__, event);
     esp_a2d_cb_param_t *a2d = NULL;
     switch (m_media_state) {
     case APP_AV_MEDIA_STATE_IDLE: {
@@ -673,6 +676,17 @@ void app_main()
         m_a2d_state = APP_AV_STATE_DISCOVERING;
         esp_bt_gap_start_discovery(ESP_BT_INQ_MODE_GENERAL_INQUIRY, 10, 0);
 
+        /* create and start heart beat timer */
+        do {
+            int tmr_id = 0;
+            tmr = xTimerCreate("connTmr", (10000 / portTICK_RATE_MS),
+                               pdTRUE, (void *)tmr_id, a2d_app_heart_beat);
+            xTimerStart(tmr, portMAX_DELAY);
+        } while (0);
+
+        bt_app_msg_t msg;
+        memset(&msg, 0, sizeof(bt_app_msg_t));
+        
 
     //******************************************* SETUP SPIFFS FOR PCM FILE ***************************************
 /*
