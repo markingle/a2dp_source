@@ -1,4 +1,4 @@
-ESP-IDF A2DP-SOURCE demo
+INGLES ESP-IDF A2DP-SOURCE demo
 ========================
 
 This is a portion of the program I am developing.  The goal is too play a wav file over Classic Blutooth using the A2DP profile.  I have commented on the function where I think the wav file is READ as part of the callback function but I mush admit I am struggling to understand it.
