@@ -45,6 +45,10 @@ build/
 *.idb
 *.pdb
 
+#ESP32 SDKCONFIG
+sdkconfig.*
+sdkconfig
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
