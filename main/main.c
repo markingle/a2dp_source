@@ -13,6 +13,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
+#include "freertos/queue.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_system.h"
@@ -36,6 +37,9 @@
 #include "gpio_task.h"
 #include "sdkconfig.h"
 #include "freertos/event_groups.h"
+
+//The following headers are for Pulse count integrtion to measure change in oscillator frequency
+#include "driver/pcnt.h"
 
 #define BT_AV_TAG               "BT_AV"
 #define SPIFFS_TAG              "SPIFFS"
@@ -68,15 +72,28 @@ enum {
 
 EventGroupHandle_t alarm_eventgroup;
 
+static QueueHandle_t q1;
+
 const int GPIO_SENSE_BIT = BIT0;
 
 //GPIO pin assignments
-#define BLINK_GPIO GPIO_NUM_5
+#define BLINK_GPIO GPIO_NUM_2
 #define TDA1606_GPIO GPIO_NUM_27
 #define GPIO_TDA_INPUT  22
 #define GPIO_GLOVE_OUTPUT_SWITCH 4
 #define GPIO_OUTPUT    13
 #define GPIO_INPUT     0
+
+//Value settings to configure Pulse Count functions
+#define PCNT_TEST_UNIT      PCNT_UNIT_0
+#define GUESS PCNT
+#define PCNT_H_LIM_VAL      10
+#define PCNT_L_LIM_VAL     -10
+#define PCNT_THRESH1_VAL    5
+#define PCNT_THRESH0_VAL   -5
+#define PCNT_INPUT_SIG_IO   4  // Pulse Input GPIO
+#define PCNT_INPUT_CTRL_IO  5  // Control GPIO HIGH=count up, LOW=count down
+#define LEDC_OUTPUT_IO      18 // Output GPIO of a sample 1 Hz pulse generator
 
 //Sound function for speaker
 #define GPIO_OUTPUT_SPEED LEDC_HIGH_SPEED_MODE
@@ -142,7 +159,6 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
     return str;
 }
 
-
 void IRAM_ATTR gpio_isr_handler(void* arg) {
     uint32_t gpio_num = (uint32_t) arg;
     BaseType_t xHigherPriorityTaskWoken;
@@ -150,6 +166,12 @@ void IRAM_ATTR gpio_isr_handler(void* arg) {
         xEventGroupSetBitsFromISR(alarm_eventgroup, GPIO_SENSE_BIT, &xHigherPriorityTaskWoken);
     }
 }
+
+static void handler(void *args) {
+    gpio_num_t gpio;
+    gpio = GPIO_TDA_INPUT;
+    xQueueSendToBackFromISR(q1, &gpio, NULL);
+    }
 
 void sound(int gpio_num,uint32_t freq,uint32_t duration) {
 
@@ -184,6 +206,73 @@ void sound(int gpio_num,uint32_t freq,uint32_t duration) {
 void beep() {
     sound(GPIO_OUTPUT,660,100);
 }
+
+static void gpio_task_example(void* arg)
+{
+    uint32_t io_num;
+    ESP_LOGI(BT_AV_TAG, "HELO");
+    for(;;) {
+        if(xQueueReceive(q1, &io_num, portMAX_DELAY)) {
+            printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
+        }
+    }
+}
+
+/* Initialize PCNT functions:
+ *  - configure and initialize PCNT
+ *  - set up the input filter
+ *  - set up the counter events to watch
+ */
+static void pcnt_example_init(void)
+{
+    /* Prepare configuration for the PCNT unit */
+    pcnt_config_t pcnt_config = {
+        // Set PCNT input signal and control GPIOs
+        .pulse_gpio_num = PCNT_INPUT_SIG_IO,
+        .ctrl_gpio_num = PCNT_INPUT_CTRL_IO,
+        .channel = PCNT_CHANNEL_0,
+        .unit = PCNT_TEST_UNIT,
+        // What to do on the positive / negative edge of pulse input?
+        .pos_mode = PCNT_COUNT_INC,   // Count up on the positive edge
+        .neg_mode = PCNT_COUNT_DIS,   // Keep the counter value on the negative edge
+        // What to do when control input is low or high?
+        .lctrl_mode = PCNT_MODE_REVERSE, // Reverse counting direction if low
+        .hctrl_mode = PCNT_MODE_KEEP,    // Keep the primary counter mode if high
+        // Set the maximum and minimum limit values to watch
+        .counter_h_lim = PCNT_H_LIM_VAL,
+        .counter_l_lim = PCNT_L_LIM_VAL,
+    };
+    /* Initialize PCNT unit */
+    pcnt_unit_config(&pcnt_config);
+
+    /* Configure and enable the input filter */
+    pcnt_set_filter_value(PCNT_TEST_UNIT, 100);
+    pcnt_filter_enable(PCNT_TEST_UNIT);
+
+    /* Set threshold 0 and 1 values and enable events to watch */
+    pcnt_set_event_value(PCNT_TEST_UNIT, PCNT_EVT_THRES_1, PCNT_THRESH1_VAL);
+    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_THRES_1);
+    pcnt_set_event_value(PCNT_TEST_UNIT, PCNT_EVT_THRES_0, PCNT_THRESH0_VAL);
+    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_THRES_0);
+    /* Enable events on zero, maximum and minimum limit values */
+    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_ZERO);
+    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_H_LIM);
+    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_L_LIM);
+
+    /* Initialize PCNT's counter */
+    pcnt_counter_pause(PCNT_TEST_UNIT);
+    pcnt_counter_clear(PCNT_TEST_UNIT);
+
+    /* Register ISR handler and enable interrupts for PCNT unit */
+
+    //<<<<We want to avoid using ISR if possible.  Commenting this out until we know its required!!! >>>>>>>
+    //pcnt_isr_register(pcnt_example_intr_handler, NULL, 0, &user_isr_handle);
+    //pcnt_intr_enable(PCNT_TEST_UNIT);
+
+    /* Everything is set up, now go to counting */
+    pcnt_counter_resume(PCNT_TEST_UNIT);
+}
+
 
 void app_main()
 {
@@ -313,7 +402,6 @@ void app_main()
     gettimeofday(&lastPress, NULL);
 
     gpio_config_t io_conf;
-    //interrupt of falling edge
     io_conf.intr_type = GPIO_INTR_ANYEDGE;
     io_conf.pin_bit_mask = (1<<GPIO_GLOVE_OUTPUT_SWITCH);
     io_conf.mode = GPIO_MODE_INPUT;
@@ -321,27 +409,30 @@ void app_main()
     io_conf.pull_down_en = 1;
     gpio_config(&io_conf);
 
-    //interrupt of rising edge
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
     
-    io_conf.pin_bit_mask = (1<<GPIO_TDA_INPUT);
-    //set as input mode    
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    io_conf.pin_bit_mask = (1<<GPIO_TDA_INPUT); 
     io_conf.mode = GPIO_MODE_INPUT;
-    //enable pull-up mode
     io_conf.pull_up_en = 1;
     io_conf.pull_down_en = 0;
     gpio_config(&io_conf);
 
+    //create a queue to handle gpio event from isr
+    q1 = xQueueCreate(10, sizeof(uint32_t));
+
+    xTaskCreate(gpio_task_example, "gpio_task_example", 2048, NULL, 10, NULL);
+
     //install gpio isr service
     gpio_install_isr_service(0); // no flags
     //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(GPIO_TDA_INPUT, gpio_isr_handler, (void*) GPIO_TDA_INPUT);
+    gpio_isr_handler_add(GPIO_TDA_INPUT, handler, (void*) GPIO_TDA_INPUT);
     //gpio_isr_handler_add(GPIO_NUM_34, gpio_isr_handler, (void*) GPIO_NUM_34);
-    gpio_isr_handler_add(GPIO_GLOVE_OUTPUT_SWITCH, gpio_isr_handler, (void*) GPIO_GLOVE_OUTPUT_SWITCH);
+    //gpio_isr_handler_add(GPIO_GLOVE_OUTPUT_SWITCH, gpio_isr_handler, (void*) GPIO_GLOVE_OUTPUT_SWITCH);
 
     //init_gpio();
     //play_theme();
     sound(GPIO_OUTPUT,660,1000);
+    sound(GPIO_OUTPUT,950,1000);
 }
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
@@ -562,15 +653,19 @@ static void bt_app_av_sm_hdlr(uint16_t event, void *param)
     case APP_AV_STATE_DISCOVERED:
         break;
     case APP_AV_STATE_UNCONNECTED:
+        ESP_LOGI(BT_AV_TAG, "%s AV STATE UNCONNECTED %x", __func__, event);
         bt_app_av_state_unconnected(event, param);
         break;
     case APP_AV_STATE_CONNECTING:
+        ESP_LOGI(BT_AV_TAG, "%s AV STATE CONNECTING %x", __func__, event);
         bt_app_av_state_connecting(event, param);
         break;
     case APP_AV_STATE_CONNECTED:
+        ESP_LOGI(BT_AV_TAG, "%s AV STATE CONNECTED %x", __func__, event);
         bt_app_av_state_connected(event, param);
         break;
     case APP_AV_STATE_DISCONNECTING:
+        ESP_LOGI(BT_AV_TAG, "%s AV STATE DISCONNECTING %x", __func__, event);
         bt_app_av_state_disconnecting(event, param);
         break;
     default:

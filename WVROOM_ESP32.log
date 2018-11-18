@@ -1,0 +1,150 @@
+I (41036) BT_AV: bt_app_av_sm_hdlr state 1, evt 0xff00
+I (41696) BT_AV: Scanned device: c4:45:67:21:26:d2
+I (41696) BT_AV: --Class of Device: 0x240404
+I (41696) BT_AV: --RSSI: -65
+I (41696) BT_AV: Found a target device, address c4:45:67:21:26:d2, name JVC HA-FX9BT
+I (41706) BT_AV: Cancel device discovery ...
+D (41716) BT_APPL: BTA got event 0x201
+
+D (41716) BT_APPL: bta_dm_search_sm_execute state:1, event:0x201
+D (41726) BT_APPL: BTA got event 0x206
+
+D (41726) BT_APPL: bta_dm_search_sm_execute state:2, event:0x206
+D (41736) BT_APPL: BTA got event 0x104
+
+D (41736) BT_APPL: bta_dm_sm_execute event:0x4
+I (41746) BT_AV: Device discovery stopped.
+I (41746) BT_AV: a2dp connecting to peer: JVC HA-FX9BT
+D (41756) BT_APPL: BTA got event 0x1209
+
+D (41756) BT_APPL: bta_av_do_disc_a2d use_rc: 1 rs:0, oc:0
+D (41766) BT_APPL: ok_continue: 1 wait:x0, q_tag: 0
+D (41766) BT_APPL: bta_av_save_addr r:1, s:1
+E (41776) BT_APPL: reset flags
+D (41776) BT_APPL: bta_dm_pm_cback: st(2), id(18), app(0)
+D (41776) BT_APPL: uuid_int 0x110a, Doing SDP For 0x110b
+D (41786) BT_APPL: BTA got event 0x104
+
+D (41786) BT_APPL: bta_dm_sm_execute event:0x4
+D (41796) BT_APP_CORE: bt_app_work_dispatch event 0x0, param len 16
+D (41806) BT_APP_CORE: bt_app_task_handler, sig 0x1, 0x0
+I (41806) BT_AV: bt_app_av_sm_hdlr state 4, evt 0x0
+I (41816) BT_AV: bt_app_av_sm_hdlr AV STATE CONNECTING 0
+D (42166) BT_APPL: BTA got event 0x104
+
+D (42166) BT_APPL: bta_dm_sm_execute event:0x4
+D (42276) BT_APPL: BTA got event 0x104
+
+D (42276) BT_APPL: bta_dm_sm_execute event:0x4
+D (42276) BT_APPL: bta_dm_acl_change info: 0x10
+D (42446) BT_APPL: BTA got event 0x1214
+
+D (42496) BT_APPL:   bd_addr:c4-45-67-21-26-d2
+D (42506) BT_APPL: scb hndl x41, role x0
+
+D (42506) BT_APPL: conn_cback bd_addr:c4-45-67-21-26-d2
+
+D (42506) BT_APPL: BTA got event 0x1227
+
+D (42506) BT_APPL:  bta_dm_policy_cback cmd:16, policy:0x5
+D (42516) BT_APPL: bta_dm_rm_cback:0, status:1
+D (42516) BT_APPL: bta_dm_pm_cback: st(1), id(18), app(0)
+W (42526) BT_APPL: bta_dm_act no entry for connected service cbs
+D (42526) BT_APPL: bta_av_cleanup
+D (42536) BT_APPL: bta_sys_stop_timer expected alarm was not in bta alarm hash map.
+D (42546) BT_APPL: bta_sys_stop_timer expected alarm was not in bta alarm hash map.
+D (42546) BT_APPL: bta_av_conn_chg shdl:1
+D (42556) BT_APPL: conn_chg dn[0]: 0, status=0x10, shdl:0, lidx:3
+D (42556) BT_APPL: conn_chg dn[1]: 255, status=0x0, shdl:0, lidx:0
+D (42566) BT_APPL: conn_chg dn[2]: 255, status=0x0, shdl:0, lidx:0
+D (42576) BT_APPL: conn_chg dn[3]: 255, status=0x0, shdl:0, lidx:0
+D (42576) BT_APPL: bta_av_conn_chg audio:0 video:0 up:0 conn_msk:0x2 chk_restore:1 audio_open_cnt:0
+D (42586) BT_APPL: BTA got event 0x1230
+
+D (42596) BT_APPL: bta_av_sig_chg event: 17
+D (42596) BT_APPL: conn_lcb: 0x0
+D (42596) BT_APPL: BTA got event 0x104
+
+D (42606) BT_APPL: bta_dm_sm_execute event:0x4
+D (42606) BT_APPL: BTA got event 0x104
+
+D (42616) BT_APPL: bta_dm_sm_execute event:0x4
+W (42616) BT_BTC: BTA_AV_OPEN_EVT::FAILED status: 3
+
+D (42626) BT_APP_CORE: bt_app_work_dispatch event 0x0, param len 16
+D (42626) BT_APP_CORE: bt_app_task_handler, sig 0x1, 0x0
+I (42636) BT_AV: bt_app_av_sm_hdlr state 4, evt 0x0
+I (42636) BT_AV: bt_app_av_sm_hdlr AV STATE CONNECTING 0
+D (42646) BT_APPL: ## ON A2DP IDLE ## peer_sep = 0, service id = 3
+D (42656) BT_APPL: bta_av_co_init
+D (42656) BT_APPL: bta_av_co_cp_set_flag
+D (42656) BT_APPL: bta_av_co_audio_codec_reset
+D (51036) BT_APP_CORE: bt_app_work_dispatch event 0xff00, param len 0
+D (51036) BT_APP_CORE: bt_app_task_handler, sig 0x1, 0xff00
+I (51036) BT_AV: bt_app_av_sm_hdlr state 3, evt 0xff00
+I (51036) BT_AV: bt_app_av_sm_hdlr AV STATE UNCONNECTED ff00
+I (51046) BT_AV: a2dp connecting to peer: c4:45:67:21:26:d2
+D (51046) BT_APPL: BTA got event 0x1209
+
+D (51056) BT_APPL: bta_av_do_disc_a2d use_rc: 1 rs:0, oc:0
+D (51056) BT_APPL: ok_continue: 1 wait:x0, q_tag: 0
+D (51066) BT_APPL: bta_av_save_addr r:1, s:1
+E (51066) BT_APPL: reset flags
+D (51076) BT_APPL: bta_dm_pm_cback: st(2), id(18), app(0)
+D (51076) BT_APPL: uuid_int 0x110a, Doing SDP For 0x110b
+D (51086) BT_APPL: BTA got event 0x104
+
+D (51086) BT_APPL: bta_dm_sm_execute event:0x4
+D (51096) BT_APP_CORE: bt_app_work_dispatch event 0x0, param len 16
+D (51096) BT_APP_CORE: bt_app_task_handler, sig 0x1, 0x0
+I (51106) BT_AV: bt_app_av_sm_hdlr state 4, evt 0x0
+I (51106) BT_AV: bt_app_av_sm_hdlr AV STATE CONNECTING 0
+D (51276) BT_APPL: BTA got event 0x104
+
+D (51276) BT_APPL: bta_dm_sm_execute event:0x4
+D (51276) BT_APPL: bta_dm_acl_change info: 0x10
+D (51276) BT_APPL: BTA got event 0x104
+
+D (51276) BT_APPL: bta_dm_sm_execute event:0x4
+D (51486) BT_APPL: BTA got event 0x1214
+
+D (51546) BT_APPL:   bd_addr:c4-45-67-21-26-d2
+D (51546) BT_APPL: scb hndl x41, role x0
+
+D (51546) BT_APPL: conn_cback bd_addr:c4-45-67-21-26-d2
+
+D (51546) BT_APPL: BTA got event 0x1227
+
+D (51556) BT_APPL:  bta_dm_policy_cback cmd:16, policy:0x5
+D (51556) BT_APPL: bta_dm_rm_cback:0, status:1
+D (51566) BT_APPL: bta_dm_pm_cback: st(1), id(18), app(0)
+W (51566) BT_APPL: bta_dm_act no entry for connected service cbs
+D (51576) BT_APPL: bta_av_cleanup
+D (51576) BT_APPL: bta_sys_stop_timer expected alarm was not in bta alarm hash map.
+D (51586) BT_APPL: bta_sys_stop_timer expected alarm was not in bta alarm hash map.
+D (51596) BT_APPL: bta_av_conn_chg shdl:1
+D (51596) BT_APPL: conn_chg dn[0]: 0, status=0x10, shdl:0, lidx:3
+D (51606) BT_APPL: conn_chg dn[1]: 255, status=0x0, shdl:0, lidx:0
+D (51606) BT_APPL: conn_chg dn[2]: 255, status=0x0, shdl:0, lidx:0
+D (51616) BT_APPL: conn_chg dn[3]: 255, status=0x0, shdl:0, lidx:0
+D (51626) BT_APPL: bta_av_conn_chg audio:0 video:0 up:0 conn_msk:0x2 chk_restore:1 audio_open_cnt:0
+D (51636) BT_APPL: BTA got event 0x1230
+
+D (51636) BT_APPL: bta_av_sig_chg event: 17
+D (51636) BT_APPL: conn_lcb: 0x0
+D (51646) BT_APPL: BTA got event 0x104
+
+D (51646) BT_APPL: bta_dm_sm_execute event:0x4
+D (51656) BT_APPL: BTA got event 0x104
+
+D (51656) BT_APPL: bta_dm_sm_execute event:0x4
+W (51656) BT_BTC: BTA_AV_OPEN_EVT::FAILED status: 3
+
+D (51666) BT_APP_CORE: bt_app_work_dispatch event 0x0, param len 16
+D (51676) BT_APP_CORE: bt_app_task_handler, sig 0x1, 0x0
+I (51676) BT_AV: bt_app_av_sm_hdlr state 4, evt 0x0
+I (51686) BT_AV: bt_app_av_sm_hdlr AV STATE CONNECTING 0
+D (51686) BT_APPL: ## ON A2DP IDLE ## peer_sep = 0, service id = 3
+D (51696) BT_APPL: bta_av_co_init
+D (51696) BT_APPL: bta_av_co_cp_set_flag
+D (51706) BT_APPL: bta_av_co_audio_codec_reset
