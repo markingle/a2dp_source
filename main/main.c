@@ -87,7 +87,7 @@ const int GPIO_SENSE_BIT = BIT0;
 //Value settings to configure Pulse Count functions
 #define PCNT_TEST_UNIT      PCNT_UNIT_0
 #define GUESS PCNT
-#define PCNT_H_LIM_VAL      10
+#define PCNT_H_LIM_VAL      10000
 #define PCNT_L_LIM_VAL     -10
 #define PCNT_THRESH1_VAL    5
 #define PCNT_THRESH0_VAL   -5
@@ -483,6 +483,9 @@ void app_main()
         pcnt_get_counter_value(PCNT_TEST_UNIT, &count);
         printf("Current counter value :%d\n", count);
         //vTaskDelay(1000);
+        if (count > 9000){
+            beep();
+        }
     }
 }
 
