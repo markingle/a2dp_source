@@ -173,6 +173,12 @@ static void handler(void *args) {
     xQueueSendToBackFromISR(q1, &gpio, NULL);
     }
 
+//Structure for the eight pulse units
+typedef struct {
+    int unit;  // the PCNT unit that originated an interrupt
+    uint32_t status; // information on the event type that caused the interrupt
+} pcnt_evt_t;
+
 void sound(int gpio_num,uint32_t freq,uint32_t duration) {
 
     ledc_timer_config_t timer_conf;
@@ -218,12 +224,37 @@ static void gpio_task_example(void* arg)
     }
 }
 
+/* Configure LED PWM Controller
+ * to output sample pulses at 1 Hz with duty of about 10%
+ */
+static void ledc_init(void)
+{
+    // Prepare and then apply the LEDC PWM timer configuration
+    ledc_timer_config_t ledc_timer;
+    ledc_timer.speed_mode       = LEDC_HIGH_SPEED_MODE;
+    ledc_timer.timer_num        = LEDC_TIMER_1;
+    ledc_timer.duty_resolution  = LEDC_TIMER_10_BIT;
+    ledc_timer.freq_hz          = 1;  // set output frequency at 1 Hz
+    ledc_timer_config(&ledc_timer);
+
+    // Prepare and then apply the LEDC PWM channel configuration
+    ledc_channel_config_t ledc_channel;
+    ledc_channel.speed_mode = LEDC_HIGH_SPEED_MODE;
+    ledc_channel.channel    = LEDC_CHANNEL_1;
+    ledc_channel.timer_sel  = LEDC_TIMER_1;
+    ledc_channel.intr_type  = LEDC_INTR_DISABLE;
+    ledc_channel.gpio_num   = LEDC_OUTPUT_IO;
+    ledc_channel.duty       = 100; // set duty at about 10%
+    ledc_channel.hpoint     = 0;
+    ledc_channel_config(&ledc_channel);
+}
+
 /* Initialize PCNT functions:
  *  - configure and initialize PCNT
  *  - set up the input filter
  *  - set up the counter events to watch
  */
-static void pcnt_example_init(void)
+static void metaldetector_pcnt_init(void)
 {
     /* Prepare configuration for the PCNT unit */
     pcnt_config_t pcnt_config = {
@@ -245,19 +276,22 @@ static void pcnt_example_init(void)
     /* Initialize PCNT unit */
     pcnt_unit_config(&pcnt_config);
 
+    //<<<<<<<< NOT NEEDED.  LEAVING FOR REFERNCE. REMOVE BEFORE ALPHA RELEASE >>>>>>>>>>>>>
     /* Configure and enable the input filter */
-    pcnt_set_filter_value(PCNT_TEST_UNIT, 100);
-    pcnt_filter_enable(PCNT_TEST_UNIT);
+    //pcnt_set_filter_value(PCNT_TEST_UNIT, 100);
+    //pcnt_filter_enable(PCNT_TEST_UNIT);
 
     /* Set threshold 0 and 1 values and enable events to watch */
-    pcnt_set_event_value(PCNT_TEST_UNIT, PCNT_EVT_THRES_1, PCNT_THRESH1_VAL);
-    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_THRES_1);
-    pcnt_set_event_value(PCNT_TEST_UNIT, PCNT_EVT_THRES_0, PCNT_THRESH0_VAL);
-    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_THRES_0);
+    //pcnt_set_event_value(PCNT_TEST_UNIT, PCNT_EVT_THRES_1, PCNT_THRESH1_VAL);
+    //pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_THRES_1);
+    //pcnt_set_event_value(PCNT_TEST_UNIT, PCNT_EVT_THRES_0, PCNT_THRESH0_VAL);
+    //pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_THRES_0);
+    
     /* Enable events on zero, maximum and minimum limit values */
-    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_ZERO);
-    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_H_LIM);
-    pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_L_LIM);
+    //pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_ZERO);
+    //pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_H_LIM);
+    //pcnt_event_enable(PCNT_TEST_UNIT, PCNT_EVT_L_LIM);
+    //<<<<<<<< NOT NEEDED.  LEAVING FOR REFERNCE. REMOVE BEFORE ALPHA RELEASE >>>>>>>>>>>>>
 
     /* Initialize PCNT's counter */
     pcnt_counter_pause(PCNT_TEST_UNIT);
@@ -391,10 +425,17 @@ void app_main()
             
     ESP_LOGI(SPIFFS_TAG, "File file has been read");
 */
+
+    //******************************************* SETUP PULSE COUNT CONFIGURATION FOR METAL DETECTOR ***************************************
+
+    ledc_init();
+
+    metaldetector_pcnt_init();
+
     //******************************************* SETUP GPIO CONFIGURATION FOR METAL DETECTOR AND SWITCH ***************************************
 
 
-    //xTaskCreate(example_i2s_adc_dac, "example_i2s_adc_dac", 1024 * 2, NULL, 5, NULL);
+    /*//xTaskCreate(example_i2s_adc_dac, "example_i2s_adc_dac", 1024 * 2, NULL, 5, NULL);
     //xTaskCreate(adc_read_task, "ADC read task", 2048, NULL, 5, NULL);
     //gpio_pad_select_gpio(TDA1606_GPIO);
     struct timeval lastPress;
@@ -428,11 +469,21 @@ void app_main()
     gpio_isr_handler_add(GPIO_TDA_INPUT, handler, (void*) GPIO_TDA_INPUT);
     //gpio_isr_handler_add(GPIO_NUM_34, gpio_isr_handler, (void*) GPIO_NUM_34);
     //gpio_isr_handler_add(GPIO_GLOVE_OUTPUT_SWITCH, gpio_isr_handler, (void*) GPIO_GLOVE_OUTPUT_SWITCH);
-
+*/
     //init_gpio();
     //play_theme();
     sound(GPIO_OUTPUT,660,1000);
     sound(GPIO_OUTPUT,950,1000);
+
+    //Set count and create Pulse Count structure
+    int16_t count = 0;
+    pcnt_evt_t evt;
+
+    while(1){
+        pcnt_get_counter_value(PCNT_TEST_UNIT, &count);
+        printf("Current counter value :%d\n", count);
+        //vTaskDelay(1000);
+    }
 }
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
