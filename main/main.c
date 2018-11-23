@@ -349,10 +349,10 @@ void app_main()
     }
 
     /* create application task */
-    //bt_app_task_start_up();
+    bt_app_task_start_up();
 
     /* Bluetooth device name, connection mode and profile set up */
-    //bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
+    bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
 
     //******************************************* SETUP SPIFFS FOR PCM FILE ***************************************
 /*
@@ -478,7 +478,7 @@ void app_main()
     sound(GPIO_OUTPUT,950,1000);
 
     //Set count and create Pulse Count structure
-    int16_t count, sum = 0, init_count = 0;
+    int16_t count, sum = 0, init_freq = 0;
     int16_t i, average_diff;
     int16_t first_count = 0;
     int16_t second_count = 0;
@@ -486,51 +486,47 @@ void app_main()
     int16_t oldvalue, running_frequency = 0;
     int16_t temp = 0;
     float count_difference[COUNT_SAMPLE_SIZE];
-    pcnt_evt_t evt;
 
     while(1){
-        //pcnt_get_counter_value(PCNT_TEST_UNIT, &count);
-        //printf("Current counter value :%d\n", count);
-        //vTaskDelay(1000);
-        if (init_count==0){
+        if (init_freq==0){
             beep();
             printf("Determining frequency average on start up\n");
             for(i = 0; i < COUNT_SAMPLE_SIZE; ++i)
                 {
+                printf("Start calibration....pass #%d\n", COUNT_SAMPLE_SIZE);
                 pcnt_get_counter_value(PCNT_TEST_UNIT, &first_count);
-                printf("First counter value for SD:%d\n", first_count);
-                vTaskDelay(150 / portTICK_PERIOD_MS); // 250 milliseconds
+                printf("First counter value for calibration:%d\n", first_count);
+                vTaskDelay(150 / portTICK_PERIOD_MS); // 150 milliseconds
                 pcnt_get_counter_value(PCNT_TEST_UNIT, &second_count);
-                printf("Second counter value for SD:%d\n", second_count);
-                temp = (second_count - first_count);
-                count_difference[i] = temp;
+                printf("Second counter value for calibration:%d\n", second_count);
+                count_difference[i] = (second_count - first_count);
                 printf("Count Difference: %lf\n", count_difference[i]);
                 sum += count_difference[i];
                 average_diff = sum/COUNT_SAMPLE_SIZE;
                 }
             printf("SUM: %d\n", sum);
             printf("Average: %d\n", average_diff);
-            init_count = 1;  // init complete set to 1 to run else code
+            init_freq = 1;  // init complete set to 1 to start detecting metal
             first_count = 0; // reuse first and second variables
             second_count = 0;
         } else{
             printf("Analyzing frequency data to detect metal....\n");
             pcnt_get_counter_value(PCNT_TEST_UNIT, &first_count);
             printf("Running first counter value :%d\n", first_count);
-            vTaskDelay(150 / portTICK_PERIOD_MS); // 250 milliseconds
+            vTaskDelay(150 / portTICK_PERIOD_MS); // 150 milliseconds
             pcnt_get_counter_value(PCNT_TEST_UNIT, &second_count);
             printf("Running second counter value :%d\n", second_count);
             // At some point there will be a counter overrun these lines calc the difference at the overrun and reset second_count
             if (second_count < first_count){
                 printf("Overrun detected...resetting second_count\n");
                 second_count=second_count+((first_count - PCNT_H_LIM_VAL)*-1);
-                running_frequency= second_count;
+                running_frequency = second_count;
             } else {
                 running_frequency = (second_count - first_count);
             }
             
             printf("The frequnecy difference is :%d\n", running_frequency);
-            if (running_frequency < (average_diff-1) || running_frequency > (average_diff+1)) {
+            if (running_frequency < (average_diff-1) || running_frequency > (average_diff+1)) {. //Deadband logic
                 printf("Frequency +++++++\n");
                 beep();
                 oldvalue = running_frequency;
@@ -612,7 +608,7 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
     /* search for device named "ESP_SPEAKER" in its extenXded inqury response */
     if (eir) {
         get_name_from_eir(eir, peer_bdname, NULL);
-        if (strcmp((char *)peer_bdname, "JVC HA-FX9BT") != 0) {     //jvc ha-fx9bt   SoundCore mini
+        if (strcmp((char *)peer_bdname, "SoundCore mini") != 0) {     //jvc ha-fx9bt   SoundCore mini
             return;
         }
 
