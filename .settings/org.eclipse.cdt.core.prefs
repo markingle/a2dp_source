@@ -1,0 +1,12 @@
+eclipse.preferences.version=1
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/BATCH_BUILD/delimiter=\:
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/BATCH_BUILD/operation=append
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/BATCH_BUILD/value=1
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/IDF_PATH/delimiter=\:
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/IDF_PATH/operation=replace
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/IDF_PATH/value=/Users/user/esp/esp-idf
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/PATH/delimiter=\:
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/PATH/operation=replace
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/PATH/value=/usr/bin\:/bin\:/usr/sbin\:/sbin\:${PATH}\:/Users/user/esp/xtensa-esp32-elf/bin
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/append=true
+environment/project/com.espressif.esp32.managedbuild.cross.toolchain.base.1489382612/appendContributed=true

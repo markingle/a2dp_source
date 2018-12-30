@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cdtprojectproperties>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.IncludePaths">
+<language name="Assembly Source File">
+
+</language>
+<language name="C Source File">
+<includepath>${IDF_Path}/components/esp32/include</includepath>
+<includepath>${IDF_PATH}/components/freertos/include</includepath>
+<includepath>${IDF_PATH}/components/nvs_flash/include</includepath>
+<includepath>${IDF_PATH}/components/newlib/include</includepath>
+<includepath>${IDF_PATH}/components/driver/include</includepath>
+<includepath>${IDF_PATH}/components/log/include</includepath>
+<includepath workspace_path="true">/a2dp_source/build/include</includepath>
+<includepath>${IDF_PATH}/components/bt/include</includepath>
+<includepath>${IDF_PATH}/components/bt/include/bluedroid/api/include/api</includepath>
+<includepath>${IDF_PATH}/components/spiffs/include</includepath>
+
+</language>
+<language name="C++ Source File">
+
+</language>
+<language name="Object File">
+
+</language>
+</section>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.Macros">
+<language name="Assembly Source File">
+
+</language>
+<language name="C Source File">
+
+</language>
+<language name="C++ Source File">
+
+</language>
+<language name="Object File">
+
+</language>
+</section>
+</cdtprojectproperties>

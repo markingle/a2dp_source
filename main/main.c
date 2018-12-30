@@ -78,7 +78,7 @@ EventGroupHandle_t alarm_eventgroup;
 xQueueHandle pcnt_evt_queue;   // A queue to handle pulse counter events
 pcnt_isr_handle_t user_isr_handle = NULL; //user's ISR service handle
 
-static QueueHandle_t q1;
+//static QueueHandle_t q1;
 
 const int GPIO_SENSE_BIT = BIT0;
 
@@ -220,7 +220,7 @@ void beep() {
     sound(GPIO_OUTPUT,660,100);
 }
 
-static void gpio_task_example(void* arg)
+/*static void gpio_task_example(void* arg)
 {
     uint32_t io_num;
     ESP_LOGI(BT_AV_TAG, "HELO");
@@ -241,8 +241,7 @@ static void IRAM_ATTR pcnt_example_intr_handler(void *arg)
     for (i = 0; i < PCNT_UNIT_MAX; i++) {
         if (intr_status & (BIT(i))) {
             evt.unit = i;
-            /* Save the PCNT event type that caused an interrupt
-               to pass it to the main program */
+            //Save the PCNT event type that caused an interrupt to pass it to the main program
             evt.status = PCNT.status_unit[i].val;
             PCNT.int_clr.val = BIT(i);
             xQueueSendFromISR(pcnt_evt_queue, &evt, &HPTaskAwoken);
@@ -251,7 +250,7 @@ static void IRAM_ATTR pcnt_example_intr_handler(void *arg)
             }
         }
     }
-}
+}*/
 
 
 
@@ -420,7 +419,7 @@ void app_main()
     }
     ESP_ERROR_CHECK( ret );
 
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT(); // @suppress("Symbol is not resolved")
 
     if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
         ESP_LOGE(BT_AV_TAG, "%s initialize controller failed\n", __func__);
@@ -694,6 +693,7 @@ void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
             ESP_LOGI(BT_AV_TAG, "authentication failed, status:%d", param->auth_cmpl.stat);
         }
     }
+    	break;
 
     default: {
         ESP_LOGI(BT_AV_TAG, "event: %d", event);
