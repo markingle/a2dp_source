@@ -18,6 +18,7 @@
 #include "nvs_flash.h"
 #include "esp_system.h"
 #include "esp_log.h"
+#include "esp_app_trace.h"
 
 #include "esp_bt.h"
 #include "bt_app_core.h"
@@ -74,6 +75,9 @@ enum {
 
 EventGroupHandle_t alarm_eventgroup;
 
+xQueueHandle pcnt_evt_queue;   // A queue to handle pulse counter events
+pcnt_isr_handle_t user_isr_handle = NULL; //user's ISR service handle
+
 static QueueHandle_t q1;
 
 const int GPIO_SENSE_BIT = BIT0;
@@ -83,11 +87,11 @@ const int GPIO_SENSE_BIT = BIT0;
 #define TDA1606_GPIO GPIO_NUM_27
 #define GPIO_TDA_INPUT  22
 #define GPIO_GLOVE_OUTPUT_SWITCH 4
-#define GPIO_OUTPUT    13
+#define GPIO_OUTPUT    23
 #define GPIO_INPUT     0
 
 //Value settings to configure Pulse Count functions
-#define PCNT_TEST_UNIT      PCNT_UNIT_0
+#define PCNT_TEST_UNIT      PCNT_UNIT_7
 #define GUESS PCNT
 #define PCNT_H_LIM_VAL      10000
 #define PCNT_L_LIM_VAL     -10
@@ -130,9 +134,10 @@ static int m_intv_cnt = 0;
 static int m_connecting_intv = 0;
 static uint32_t m_pkt_cnt = 0;
 
-static int sine_phase;
+static int sine_phase, core;
 
 TimerHandle_t tmr;
+TaskHandle_t DetectMetal_Task;
 
 int wavfile = 0;
 
@@ -161,19 +166,19 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
     return str;
 }
 
-void IRAM_ATTR gpio_isr_handler(void* arg) {
-    uint32_t gpio_num = (uint32_t) arg;
-    BaseType_t xHigherPriorityTaskWoken;
-    if (gpio_num==GPIO_OUTPUT) {
-        xEventGroupSetBitsFromISR(alarm_eventgroup, GPIO_SENSE_BIT, &xHigherPriorityTaskWoken);
-    }
-}
+//void IRAM_ATTR gpio_isr_handler(void* arg) {
+//    uint32_t gpio_num = (uint32_t) arg;
+//    BaseType_t xHigherPriorityTaskWoken;
+//    if (gpio_num==GPIO_OUTPUT) {
+//        xEventGroupSetBitsFromISR(alarm_eventgroup, GPIO_SENSE_BIT, &xHigherPriorityTaskWoken);
+//    }
+//}
 
-static void handler(void *args) {
-    gpio_num_t gpio;
-    gpio = GPIO_TDA_INPUT;
-    xQueueSendToBackFromISR(q1, &gpio, NULL);
-    }
+//static void handler(void *args) {
+//    gpio_num_t gpio;
+//    gpio = GPIO_TDA_INPUT;
+//    xQueueSendToBackFromISR(q1, &gpio, NULL);
+//    }
 
 //Structure for the eight pulse units
 typedef struct {
@@ -226,6 +231,30 @@ static void gpio_task_example(void* arg)
     }
 }
 
+static void IRAM_ATTR pcnt_example_intr_handler(void *arg)
+{
+    uint32_t intr_status = PCNT.int_st.val;
+    int i;
+    pcnt_evt_t evt;
+    portBASE_TYPE HPTaskAwoken = pdFALSE;
+
+    for (i = 0; i < PCNT_UNIT_MAX; i++) {
+        if (intr_status & (BIT(i))) {
+            evt.unit = i;
+            /* Save the PCNT event type that caused an interrupt
+               to pass it to the main program */
+            evt.status = PCNT.status_unit[i].val;
+            PCNT.int_clr.val = BIT(i);
+            xQueueSendFromISR(pcnt_evt_queue, &evt, &HPTaskAwoken);
+            if (HPTaskAwoken == pdTRUE) {
+                portYIELD_FROM_ISR();
+            }
+        }
+    }
+}
+
+
+
 /* Configure LED PWM Controller
  * to output sample pulses at 1 Hz with duty of about 10%
  */
@@ -264,12 +293,12 @@ static void metaldetector_pcnt_init(void)
         .pulse_gpio_num = PCNT_INPUT_SIG_IO,
         .ctrl_gpio_num = PCNT_INPUT_CTRL_IO,
         .channel = PCNT_CHANNEL_0,
-        .unit = PCNT_TEST_UNIT,
+        .unit = PCNT_TEST_UNIT,  //PCNT_TEST_UNIT
         // What to do on the positive / negative edge of pulse input?
         .pos_mode = PCNT_COUNT_INC,   // Count up on the positive edge
         .neg_mode = PCNT_COUNT_DIS,   // Keep the counter value on the negative edge
         // What to do when control input is low or high?
-        .lctrl_mode = PCNT_MODE_REVERSE, // Reverse counting direction if low
+        .lctrl_mode = PCNT_MODE_KEEP, // Changing to PCNT_MODE_KEEP so that default is to count up on low.  //Reverse counting direction if low
         .hctrl_mode = PCNT_MODE_KEEP,    // Keep the primary counter mode if high
         // Set the maximum and minimum limit values to watch
         .counter_h_lim = PCNT_H_LIM_VAL,
@@ -309,11 +338,76 @@ static void metaldetector_pcnt_init(void)
     pcnt_counter_resume(PCNT_TEST_UNIT);
 }
 
+static void detect_metal()
+{
+    //Set count and create Pulse Count structure
+    int16_t count, sum = 0, init_freq = 0;
+    int16_t i, average_diff;
+    int16_t first_count = 0;
+    int16_t second_count = 0;
+    int16_t startup_frequency = 0;
+    int16_t oldvalue, running_frequency = 0;
+    int16_t temp = 0;
+    float count_difference[COUNT_SAMPLE_SIZE];
+
+    while(1){
+        if (init_freq==0){
+            beep();
+            printf("Determining frequency average on start up\n");
+            for(i = 0; i < COUNT_SAMPLE_SIZE; ++i)
+                {
+                printf("Start calibration....pass #%d\n", i);
+                pcnt_get_counter_value(PCNT_TEST_UNIT, &first_count);
+                core = xPortGetCoreID();
+                printf("Startup Calibration Pulse Counter is on - Core: %d\n", core);
+                printf("First counter value for calibration:%d\n", first_count);
+                vTaskDelay(150 / portTICK_PERIOD_MS); // 150 milliseconds
+                pcnt_get_counter_value(PCNT_TEST_UNIT, &second_count);
+                printf("Second counter value for calibration:%d\n", second_count);
+                count_difference[i] = (second_count - first_count);
+                printf("Count Difference: %lf\n", count_difference[i]);
+                sum += count_difference[i];
+                average_diff = sum/COUNT_SAMPLE_SIZE;
+                }
+            printf("SUM: %d\n", sum);
+            printf("Average: %d\n", average_diff);
+            init_freq = 1;  // init complete set to 1 to start detecting metal
+            first_count = 0; // reuse first and second variables
+            second_count = 0;
+        } else{
+            printf("Analyzing frequency data to detect metal....\n");
+            pcnt_get_counter_value(PCNT_TEST_UNIT, &first_count);
+            printf("Running first counter value :%d\n", first_count);
+            vTaskDelay(150 / portTICK_PERIOD_MS); // 150 milliseconds
+            pcnt_get_counter_value(PCNT_TEST_UNIT, &second_count);
+            printf("Running second counter value :%d\n", second_count);
+            // At some point there will be a counter overrun these lines calc the difference at the overrun and reset second_count
+            if (second_count < first_count){
+                printf("Overrun detected...resetting second_count\n");
+                second_count=second_count+((first_count - PCNT_H_LIM_VAL)*-1);
+                running_frequency = second_count;
+            } else {
+                running_frequency = (second_count - first_count);
+            }
+            
+            printf("The frequnecy difference is :%d\n", running_frequency);
+            if (running_frequency < (average_diff-1) || running_frequency > (average_diff+1)) { //Deadband logic
+                printf("Frequency +++++++\n");
+                beep();
+                oldvalue = running_frequency;
+            } else {
+                printf("Frequency -------\n");
+                oldvalue = running_frequency;
+            }
+        }
+    }
+}
+
 
 void app_main()
 {
-    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_level(BLINK_GPIO, 0);
+    //gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+    //gpio_set_level(BLINK_GPIO, 0);
 
     //******************************************* SETUP BLUETOOTH STACK GAP and Classic Bluetooth ***************************************
 
@@ -321,7 +415,7 @@ void app_main()
     // Initialize NVS.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
+       ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
@@ -433,6 +527,7 @@ void app_main()
     ledc_init();
 
     metaldetector_pcnt_init();
+    
 
     //******************************************* SETUP GPIO CONFIGURATION FOR METAL DETECTOR AND SWITCH ***************************************
 
@@ -476,66 +571,9 @@ void app_main()
     //play_theme();
     sound(GPIO_OUTPUT,660,1000);
     sound(GPIO_OUTPUT,950,1000);
-
-    //Set count and create Pulse Count structure
-    int16_t count, sum = 0, init_freq = 0;
-    int16_t i, average_diff;
-    int16_t first_count = 0;
-    int16_t second_count = 0;
-    int16_t startup_frequency = 0;
-    int16_t oldvalue, running_frequency = 0;
-    int16_t temp = 0;
-    float count_difference[COUNT_SAMPLE_SIZE];
-
-    while(1){
-        if (init_freq==0){
-            beep();
-            printf("Determining frequency average on start up\n");
-            for(i = 0; i < COUNT_SAMPLE_SIZE; ++i)
-                {
-                printf("Start calibration....pass #%d\n", COUNT_SAMPLE_SIZE);
-                pcnt_get_counter_value(PCNT_TEST_UNIT, &first_count);
-                printf("First counter value for calibration:%d\n", first_count);
-                vTaskDelay(150 / portTICK_PERIOD_MS); // 150 milliseconds
-                pcnt_get_counter_value(PCNT_TEST_UNIT, &second_count);
-                printf("Second counter value for calibration:%d\n", second_count);
-                count_difference[i] = (second_count - first_count);
-                printf("Count Difference: %lf\n", count_difference[i]);
-                sum += count_difference[i];
-                average_diff = sum/COUNT_SAMPLE_SIZE;
-                }
-            printf("SUM: %d\n", sum);
-            printf("Average: %d\n", average_diff);
-            init_freq = 1;  // init complete set to 1 to start detecting metal
-            first_count = 0; // reuse first and second variables
-            second_count = 0;
-        } else{
-            printf("Analyzing frequency data to detect metal....\n");
-            pcnt_get_counter_value(PCNT_TEST_UNIT, &first_count);
-            printf("Running first counter value :%d\n", first_count);
-            vTaskDelay(150 / portTICK_PERIOD_MS); // 150 milliseconds
-            pcnt_get_counter_value(PCNT_TEST_UNIT, &second_count);
-            printf("Running second counter value :%d\n", second_count);
-            // At some point there will be a counter overrun these lines calc the difference at the overrun and reset second_count
-            if (second_count < first_count){
-                printf("Overrun detected...resetting second_count\n");
-                second_count=second_count+((first_count - PCNT_H_LIM_VAL)*-1);
-                running_frequency = second_count;
-            } else {
-                running_frequency = (second_count - first_count);
-            }
-            
-            printf("The frequnecy difference is :%d\n", running_frequency);
-            if (running_frequency < (average_diff-1) || running_frequency > (average_diff+1)) {. //Deadband logic
-                printf("Frequency +++++++\n");
-                beep();
-                oldvalue = running_frequency;
-            } else {
-                printf("Frequency -------\n");
-                oldvalue = running_frequency;
-            }
-        }
-    }
+    //detect_metal();
+    xTaskCreatePinnedToCore(detect_metal, "DetectMetal_Task", 3000, NULL, 3, &DetectMetal_Task, 1);
+    
 }
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
@@ -689,13 +727,16 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
         ESP_LOGI(BT_AV_TAG, "Starting device discovery...");
         m_a2d_state = APP_AV_STATE_DISCOVERING;
         esp_bt_gap_start_discovery(ESP_BT_INQ_MODE_GENERAL_INQUIRY, 10, 0);
+        core = xPortGetCoreID();
+        ESP_LOGI(BT_AV_TAG, "BT GAP is using Core : %d\n", core);
+
 
         /* create and start heart beat timer */
         do {
             int tmr_id = 0;
             tmr = xTimerCreate("connTmr", (10000 / portTICK_RATE_MS),
                                pdTRUE, (void *)tmr_id, a2d_app_heart_beat);
-            xTimerStart(tmr, portMAX_DELAY);
+            xTimerStart(tmr, portMAX_DELAY);//portMAX_DELAY
         } while (0);
         break;
     }
@@ -871,7 +912,7 @@ static void bt_app_av_media_proc(uint16_t event, void *param)
     }
     case APP_AV_MEDIA_STATE_STARTED: {
         if (event == BT_APP_HEART_BEAT_EVT) {
-            if (++m_intv_cnt >= 10) {
+            if (++m_intv_cnt >= 2) {   //Was 10
                 ESP_LOGI(BT_AV_TAG, "a2dp media stopping...");
                 esp_a2d_media_ctrl(ESP_A2D_MEDIA_CTRL_STOP);
                 m_media_state = APP_AV_MEDIA_STATE_STOPPING;
@@ -908,8 +949,8 @@ static void bt_app_av_state_connected(uint16_t event, void *param)
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
             ESP_LOGI(BT_AV_TAG, "a2dp disconnected");
             m_a2d_state = APP_AV_STATE_UNCONNECTED;
-            gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
-            gpio_set_level(BLINK_GPIO, 0);
+            //gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+            //gpio_set_level(BLINK_GPIO, 0);
             esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);
         }
         break;
